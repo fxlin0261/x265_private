@@ -24,6 +24,9 @@
  *****************************************************************************/
 
 #include "common.h"
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/lookahead-sme2.h"
+#endif
 #include "frame.h"
 #include "framedata.h"
 #include "picyuv.h"
@@ -140,7 +143,7 @@ bool computeEdge(pixel* edgePic, pixel* refPic, pixel* edgeTheta, intptr_t strid
                 gradientH = (float)(-3 * refPic[topLeft] + 3 * refPic[topRight] - 10 * refPic[rowTwo + colOne] + 10 * refPic[rowTwo + colThree] - 3 * refPic[bottomLeft] + 3 * refPic[bottomRight]);
                 gradientV = (float)(-3 * refPic[topLeft] - 10 * refPic[rowOne + colTwo] - 3 * refPic[topRight] + 3 * refPic[bottomLeft] + 10 * refPic[rowThree + colTwo] + 3 * refPic[bottomRight]);
                 gradientMagnitude = sqrtf(gradientH * gradientH + gradientV * gradientV);
-                if(bcalcTheta) 
+                if(bcalcTheta)
                 {
                     edgeTheta[middle] = 0;
                     radians = atan2(gradientV, gradientH);
@@ -222,7 +225,7 @@ void edgeFilter(Frame *curFrame, x265_param* param)
         x265_log(NULL, X265_LOG_ERROR, "Failed edge computation!");
 }
 
-//Find the angle of a block by averaging the pixel angles 
+//Find the angle of a block by averaging the pixel angles
 inline void findAvgAngle(const pixel* block, intptr_t stride, uint32_t size, uint32_t &angle)
 {
     int sum = 0;
@@ -788,7 +791,7 @@ void LookaheadTLD::lowresIntraEstimate(Lowres& fenc, uint32_t qgSize)
             fenc.lowresCosts[0][0][cuXY] = (uint16_t)(X265_MIN(icost, LOWRES_COST_MASK) | (0 << LOWRES_COST_SHIFT));
             fenc.intraCost[cuXY] = icost;
             fenc.intraMode[cuXY] = (uint8_t)ilowmode;
-            /* do not include edge blocks in the 
+            /* do not include edge blocks in the
             frame cost estimates, they are not very accurate */
             const bool bFrameScoreCU = (cuX > 0 && cuX < widthInCU - 1 &&
                                         cuY > 0 && cuY < heightInCU - 1) || widthInCU <= 2 || heightInCU <= 2;
@@ -1368,14 +1371,14 @@ void Lookahead::getEstimatedPictureCost(Frame *curFrame)
             frames[b] = &curFrame->m_lowres;
             frames[p1] = &slice->m_refFrameList[1][0]->m_lowres;
         }
-        else 
+        else
         {
             p0 = b = 0;
             p1 = b + l1poc - poc;
             frames[p0] = frames[b] = &curFrame->m_lowres;
             frames[p1] = &slice->m_refFrameList[1][0]->m_lowres;
         }
-        
+
         break;
 
     default:
@@ -1981,7 +1984,7 @@ void Lookahead::slicetypeDecide()
         {
             if (m_frameVariance[k]  == -1)
                 break;
-            if((k > 0 && m_frameVariance[k] >= m_frameVariance[k - 1]) || 
+            if((k > 0 && m_frameVariance[k] >= m_frameVariance[k - 1]) ||
                 (k == 0 && m_frameVariance[k] >= m_frameVariance[length - 1]))
             {
                 m_isFadeIn = true;
@@ -3124,7 +3127,7 @@ bool Lookahead::scenecut(Lowres **frames, int p0, int p1, bool bRealScenecut, in
                 noScenecuts = true;
             }
 
-            /* compute average satdcost of all the frames in the mini-gop to confirm 
+            /* compute average satdcost of all the frames in the mini-gop to confirm
              * whether there is any great fluctuation among them to rule out false positives */
             X265_CHECK(frames[cp1]->costEst[cp1 - p0][0]!= -1, "costEst is not done \n");
             avgSatdCost += frames[cp1]->costEst[cp1 - p0][0];
@@ -3143,7 +3146,7 @@ bool Lookahead::scenecut(Lowres **frames, int p0, int p1, bool bRealScenecut, in
             {
                 int64_t curCost  = frames[i]->costEst[i - p0][0];
                 int64_t prevCost = frames[i - 1]->costEst[i - 1 - p0][0];
-                if (fabs((double)(curCost - avgSatdCost)) > 0.1 * avgSatdCost || 
+                if (fabs((double)(curCost - avgSatdCost)) > 0.1 * avgSatdCost ||
                     fabs((double)(curCost - prevCost)) > 0.1 * prevCost)
                 {
                     fluctuate = true;
@@ -3171,8 +3174,8 @@ bool Lookahead::scenecut(Lowres **frames, int p0, int p1, bool bRealScenecut, in
     }
 
     /* A frame is always analysed with bRealScenecut = true first, and then bRealScenecut = false,
-       the former for I decisions and the latter for P/B decisions. It's possible that the first 
-       analysis detected scenecuts which were later nulled due to scene transitioning, in which 
+       the former for I decisions and the latter for P/B decisions. It's possible that the first
+       analysis detected scenecuts which were later nulled due to scene transitioning, in which
        case do not return a true scenecut for this frame */
 
     if (!frames[p1]->bScenecut)
@@ -3848,7 +3851,7 @@ void Lookahead::computeCUTreeQpOffset(Lowres *frame, double averageDuration, int
                             uint32_t idx = ((block_yy / loopIncr) * (maxCols)) + (block_xx / loopIncr);
 
                             log2_ratio += *(pcCuTree8x8 + idx);
-                            
+
                             blockXY++;
                         }
                     }
@@ -4029,7 +4032,7 @@ int64_t Lookahead::frameCostRecalculate(Lowres** frames, int p0, int p1, int b)
                     qp_offset[cux * 2 + cuy * m_8x8Width * 4 + 1] +
                     qp_offset[cux * 2 + cuy * m_8x8Width * 4 + frames[b]->maxBlocksInRowFullRes] +
                     qp_offset[cux * 2 + cuy * m_8x8Width * 4 + frames[b]->maxBlocksInRowFullRes + 1]) / 4;
-                else 
+                else
                     qp_adj = qp_offset[cuxy];
                 cuCost = (cuCost * x265_exp2fix8(qp_adj) + 128) >> 8;
                 rowSatd[cuy] += cuCost;
@@ -4371,14 +4374,31 @@ void CostEstimateGroup::estimateCUCost(LookaheadTLD& tld, int cuX, int cuY, int 
         pixel *src0 = fref0->lowresMC(pelOffset, fenc->lowresMvs[0][listDist[0]][cuXY], subpelbuf0, stride0, 0);
         pixel *src1 = fref1->lowresMC(pelOffset, fenc->lowresMvs[1][listDist[1]][cuXY], subpelbuf1, stride1, 0);
         ALIGN_VAR_32(pixel, ref[X265_LOWRES_CU_SIZE * X265_LOWRES_CU_SIZE]);
-        primitives.pu[LUMA_8x8].pixelavg_pp[NONALIGNED](ref, X265_LOWRES_CU_SIZE, src0, stride0, src1, stride1, 32);
-        int bicost = tld.me.bufSATD(ref, X265_LOWRES_CU_SIZE);
+        int bicost;
+#if HAVE_SME2_EXPERIMENTS
+        // hotspot7
+        if (lookaheadSme2Enabled())
+            bicost = bidirSatd8x8_sme2(tld.me.fencPUYuv.m_buf[0], FENC_STRIDE, src0, stride0, src1, stride1);
+        else
+#endif
+        {
+            primitives.pu[LUMA_8x8].pixelavg_pp[NONALIGNED](ref, X265_LOWRES_CU_SIZE, src0, stride0, src1, stride1, 32);
+            bicost = tld.me.bufSATD(ref, X265_LOWRES_CU_SIZE);
+        }
         COPY2_IF_LT(bcost, bicost, listused, 3);
         /* coloc candidate */
         src0 = fref0->lowresPlane[0] + pelOffset;
         src1 = fref1->lowresPlane[0] + pelOffset;
-        primitives.pu[LUMA_8x8].pixelavg_pp[NONALIGNED](ref, X265_LOWRES_CU_SIZE, src0, fref0->lumaStride, src1, fref1->lumaStride, 32);
-        bicost = tld.me.bufSATD(ref, X265_LOWRES_CU_SIZE);
+#if HAVE_SME2_EXPERIMENTS
+        // hotspot7
+        if (lookaheadSme2Enabled())
+            bicost = bidirSatd8x8_sme2(tld.me.fencPUYuv.m_buf[0], FENC_STRIDE, src0, fref0->lumaStride, src1, fref1->lumaStride);
+        else
+#endif
+        {
+            primitives.pu[LUMA_8x8].pixelavg_pp[NONALIGNED](ref, X265_LOWRES_CU_SIZE, src0, fref0->lumaStride, src1, fref1->lumaStride, 32);
+            bicost = tld.me.bufSATD(ref, X265_LOWRES_CU_SIZE);
+        }
         COPY2_IF_LT(bcost, bicost, listused, 3);
         bcost += lowresPenalty;
     }

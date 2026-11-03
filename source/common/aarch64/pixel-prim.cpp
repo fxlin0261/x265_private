@@ -11,6 +11,9 @@
 
 #include <arm_neon.h>
 
+#if HAVE_SME2_EXPERIMENTS
+namespace X265_NS { extern pixelcmp_t sa8d16x16Sme2; }
+#endif
 using namespace X265_NS;
 
 
@@ -786,6 +789,11 @@ static inline int pixel_sa8d_8x8_neon(const uint8_t *pix1, intptr_t stride_pix1,
 static inline int pixel_sa8d_16x16_neon(const uint8_t *pix1, intptr_t stride_pix1,
                                         const uint8_t *pix2, intptr_t stride_pix2)
 {
+#if HAVE_SME2_EXPERIMENTS
+    // hotspot5
+    if (sa8d16x16Sme2) return sa8d16x16Sme2(pix1, stride_pix1, pix2, stride_pix2);
+#endif
+
     int16x8_t diff[8];
     uint16x8_t res[2];
     uint32x4_t sum0, sum1;

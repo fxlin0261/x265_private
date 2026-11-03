@@ -157,6 +157,73 @@ if(ENABLE_ASSEMBLY AND (ARM64 OR CROSS_COMPILE_ARM64))
         endforeach()
     endif()
 
+    if(ENABLE_SME2_EXPERIMENTS AND NOT HIGH_BIT_DEPTH)
+        # hotspot1
+        list(APPEND ASM_PRIMITIVES aarch64/coeff-group-mask-sme2.cpp aarch64/coeff-group-mask-sme2.h)
+        set_source_files_properties(aarch64/coeff-group-mask-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot2
+        list(APPEND ASM_PRIMITIVES aarch64/coeff-cost-sme2.cpp)
+        set_source_files_properties(aarch64/coeff-cost-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot3
+        list(APPEND ASM_PRIMITIVES aarch64/satd-sme2.cpp)
+        set_source_files_properties(aarch64/satd-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot4
+        list(APPEND ASM_PRIMITIVES aarch64/motion-search-sme2.cpp aarch64/motion-search-sme2.h)
+        set_source_files_properties(aarch64/motion-search-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot5
+        list(APPEND ASM_PRIMITIVES aarch64/sa8d-sme2.cpp)
+        set_source_files_properties(aarch64/sa8d-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot6
+        list(APPEND ASM_PRIMITIVES aarch64/intrapred4-sme2.cpp aarch64/intrapred4-sme2-tables.h)
+        set_source_files_properties(aarch64/intrapred4-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot7
+        list(APPEND ASM_PRIMITIVES aarch64/lookahead-sme2.cpp aarch64/lookahead-sme2.h)
+        set_source_files_properties(aarch64/lookahead-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot8
+        list(APPEND ASM_PRIMITIVES aarch64/intrapred8-sme2.cpp aarch64/intrapred8-sme2-tables.h)
+        set_source_files_properties(aarch64/intrapred8-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot9
+        list(APPEND ASM_PRIMITIVES aarch64/dct32-sme2.cpp aarch64/dct32-sme2-tables.h)
+        set_source_files_properties(aarch64/dct32-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot10
+        list(APPEND ASM_PRIMITIVES aarch64/sao-stats-sme2.cpp aarch64/sme2-profile.cpp aarch64/sme2-profile.h)
+        set_source_files_properties(aarch64/sao-stats-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot11
+        list(APPEND ASM_PRIMITIVES aarch64/quant-sme2.cpp)
+        set_source_files_properties(aarch64/quant-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot12
+        list(APPEND ASM_PRIMITIVES aarch64/cabac-cost-sme2.cpp)
+        set_source_files_properties(aarch64/cabac-cost-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot13
+        list(APPEND ASM_PRIMITIVES aarch64/encoder-subpaths-sme2.cpp aarch64/encoder-subpaths-sme2.h)
+        set_source_files_properties(aarch64/encoder-subpaths-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot16
+        list(APPEND ASM_PRIMITIVES aarch64/dct16-sme2.cpp aarch64/dct16-sme2-tables.h)
+        set_source_files_properties(aarch64/dct16-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot14
+        list(APPEND ASM_PRIMITIVES aarch64/psy-cost-sme2.cpp)
+        set_source_files_properties(aarch64/psy-cost-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot18
+        list(APPEND ASM_PRIMITIVES aarch64/sa8d8-sme2.cpp)
+        set_source_files_properties(aarch64/sa8d8-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+    endif()
+
     source_group(Assembly FILES ${ASM_PRIMITIVES})
 
     if(AARCH64_WARNINGS_AS_ERRORS)
@@ -246,7 +313,7 @@ add_library(common OBJECT
     framedata.cpp framedata.h
     cudata.cpp cudata.h
     slice.cpp slice.h
-    lowres.cpp lowres.h mv.h 
+    lowres.cpp lowres.h mv.h
     piclist.cpp piclist.h
     predict.cpp  predict.h
     scalinglist.cpp scalinglist.h

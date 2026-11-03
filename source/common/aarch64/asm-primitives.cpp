@@ -662,6 +662,20 @@ void setupNeonDotProdPrimitives(EncoderPrimitives &)
 #endif // !HIGH_BIT_DEPTH
 #endif // HAVE_NEON_DOTPROD
 
+#if HAVE_SME2_EXPERIMENTS
+void setupCoeffCostPrimitives_sme2(EncoderPrimitives &p);
+void setupSatdPrimitives_sme2(EncoderPrimitives &p);
+void setupSa8dPrimitives_sme2(EncoderPrimitives &p);
+void setupIntraPred4Primitives_sme2(EncoderPrimitives &p);
+void setupIntraPred8Primitives_sme2(EncoderPrimitives &p);
+void setupDct32Primitives_sme2(EncoderPrimitives &p);
+void setupQuantPrimitives_sme2(EncoderPrimitives &p);
+void setupC1C2Primitives_sme2(EncoderPrimitives &p);
+void setupDct16Primitives_sme2(EncoderPrimitives &p);
+void setupPsyCostPrimitives_sme2(EncoderPrimitives &p);
+void setupSa8d8Primitives_sme2(EncoderPrimitives &p);
+void setupSaoStatsPrimitives_sme2(EncoderPrimitives &p);
+#endif
 void setupAssemblyPrimitives(EncoderPrimitives &p, int cpuMask)
 {
     if (cpuMask & X265_CPU_NEON)
@@ -691,6 +705,32 @@ void setupAssemblyPrimitives(EncoderPrimitives &p, int cpuMask)
     {
         setupSve2BitPermPrimitives(p);
     }
+#endif
+#if HAVE_SME2_EXPERIMENTS
+    // hotspot2
+    setupCoeffCostPrimitives_sme2(p);
+    // hotspot3
+    setupSatdPrimitives_sme2(p);
+    // hotspot5
+    setupSa8dPrimitives_sme2(p);
+    // hotspot6
+    setupIntraPred4Primitives_sme2(p);
+    // hotspot8
+    setupIntraPred8Primitives_sme2(p);
+    // hotspot9
+    setupDct32Primitives_sme2(p);
+    // hotspot10
+    setupSaoStatsPrimitives_sme2(p);
+    // hotspot18
+    setupSa8d8Primitives_sme2(p);
+    // hotspot14
+    setupPsyCostPrimitives_sme2(p);
+    // hotspot16
+    setupDct16Primitives_sme2(p);
+    // hotspot12
+    setupC1C2Primitives_sme2(p);
+    // hotspot11
+    setupQuantPrimitives_sme2(p);
 #endif
 }
 

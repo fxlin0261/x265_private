@@ -23,6 +23,10 @@
 *****************************************************************************/
 
 #include "common.h"
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/encoder-subpaths-sme2.h"
+#include "aarch64/sme2-profile.h"
+#endif
 #include "primitives.h"
 #include "picyuv.h"
 #include "cudata.h"
@@ -1248,6 +1252,10 @@ void Search::codeIntraChromaQt(Mode& mode, const CUGeom& cuGeom, uint32_t tuDept
             primitives.cu[sizeIdxC].calcresidual[stride % 64 == 0](fenc, pred, residual, stride);
 
             uint32_t numSig = m_quant.transformNxN(cu, fenc, stride, residual, stride, coeffC, log2TrSizeC, ttype, absPartIdxC, false);
+#if HAVE_SME2_EXPERIMENTS
+            sse_t fusedChromaDist=0;
+            const bool fuseChroma=!numSig && chromaCopySseSme2Enabled();
+#endif
             if (numSig)
             {
                 m_quant.invtransformNxN(cu, residual, stride, coeffC, log2TrSizeC, ttype, true, false, numSig);
@@ -1261,10 +1269,22 @@ void Search::codeIntraChromaQt(Mode& mode, const CUGeom& cuGeom, uint32_t tuDept
             else
             {
                 // no coded residual, recon = pred
+#if HAVE_SME2_EXPERIMENTS
+                // hotspot17
+                recordSme2Calls(17,1<<log2TrSizeC,0);
+                if (fuseChroma)
+                    fusedChromaDist=(chromaCopySseVariant()==4?chromaCopySse_sme2_asm:chromaCopySseVariant()==3?chromaCopySse_sme2_dot:chromaCopySseVariant()==2?chromaCopySse_sme2_wide:chromaCopySse_sme2)(reconQt,reconQtStride,pred,stride,fenc,stride,1<<log2TrSizeC);
+                else
+#endif
                 primitives.cu[sizeIdxC].copy_pp(reconQt, reconQtStride, pred, stride);
                 cu.setCbfPartRange(0, ttype, absPartIdxC, tuIterator.absPartIdxStep);
             }
 
+#if HAVE_SME2_EXPERIMENTS
+            if (fuseChroma)
+                outCost.distortion += m_rdCost.scaleChromaDist(chromaId,fusedChromaDist);
+            else
+#endif
             outCost.distortion += m_rdCost.scaleChromaDist(chromaId, primitives.cu[sizeIdxC].sse_pp(reconQt, reconQtStride, fenc, stride));
 
             if (m_rdCost.m_psyRd)

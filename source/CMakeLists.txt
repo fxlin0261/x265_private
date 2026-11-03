@@ -103,6 +103,7 @@ elseif(ARM64MATCH GREATER "-1")
     option(ENABLE_SVE "Enable SVE" ON)
     option(ENABLE_SVE2 "Enable SVE2" ON)
     option(ENABLE_SVE2_BITPERM "Enable SVE2 BitPerm" ON)
+    option(ENABLE_SME2_EXPERIMENTS "Build draft SME2 experiments (8-bit only)" OFF)
 
     # Compiler flags for AArch64 extensions.
     set(AARCH64_NEON_FLAG "-march=armv8-a")
@@ -449,6 +450,25 @@ int main() { return 0; }")
             message(STATUS "Found SVE2 BitPerm")
             add_definitions(-DHAVE_SVE2_BITPERM=1)
         endif()
+        if(ENABLE_SME2_EXPERIMENTS AND NOT HIGH_BIT_DEPTH)
+            set(SME2_SAVED_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
+            set(SME2_SAVED_COMPILE_TARGET_TYPE "${CMAKE_TRY_COMPILE_TARGET_TYPE}")
+            set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -march=armv9.2-a+sme2")
+            set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+            check_cxx_source_compiles([=[
+#include <arm_sme.h>
+__arm_locally_streaming unsigned probe(const unsigned *p) {
+    svuint32_t x = svld1_u32(svptrue_b32(), p);
+    return svorv_u32(svptrue_b32(), svlsl_u32_x(svptrue_b32(), svdup_u32(1), x));
+}
+]=] HAVE_SME2_ACLE)
+            set(CMAKE_REQUIRED_FLAGS "${SME2_SAVED_REQUIRED_FLAGS}")
+            set(CMAKE_TRY_COMPILE_TARGET_TYPE "${SME2_SAVED_COMPILE_TARGET_TYPE}")
+            if(NOT HAVE_SME2_ACLE)
+                message(FATAL_ERROR "SME2 experiments require streaming ACLE support")
+            endif()
+            add_definitions(-DHAVE_SME2_EXPERIMENTS=1)
+        endif()
         set(ARM_ARGS -O3)
         # Do not allow implicit vector type conversions in Clang builds (this
         # is already the default in GCC builds).
@@ -581,12 +601,12 @@ int main() {
         list(APPEND LINKER_OPTIONS "-static-libgcc -static-libstdc++")
     endif(STATIC_LINK_CRT)
     check_cxx_compiler_flag(-Wno-strict-overflow CC_HAS_NO_STRICT_OVERFLOW)
-    check_cxx_compiler_flag(-Wno-narrowing CC_HAS_NO_NARROWING) 
-    check_cxx_compiler_flag(-Wno-array-bounds CC_HAS_NO_ARRAY_BOUNDS) 
+    check_cxx_compiler_flag(-Wno-narrowing CC_HAS_NO_NARROWING)
+    check_cxx_compiler_flag(-Wno-array-bounds CC_HAS_NO_ARRAY_BOUNDS)
     if (CC_HAS_NO_ARRAY_BOUNDS)
         add_definitions(-Wno-array-bounds) # these are unhelpful
     endif()
-    check_cxx_compiler_flag(-ffast-math CC_HAS_FAST_MATH) 
+    check_cxx_compiler_flag(-ffast-math CC_HAS_FAST_MATH)
     if (CC_HAS_FAST_MATH)
         add_definitions(-ffast-math)
     endif()

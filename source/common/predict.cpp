@@ -23,6 +23,10 @@
 *****************************************************************************/
 
 #include "common.h"
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/encoder-subpaths-sme2.h"
+#include "aarch64/sme2-profile.h"
+#endif
 #include "slice.h"
 #include "framedata.h"
 #include "picyuv.h"
@@ -771,6 +775,13 @@ void Predict::fillReferenceSamples(const pixel* adiOrigin, intptr_t picStride, c
     {
         // Fill top border with rec. samples
         const pixel* adiTemp = adiOrigin - picStride - 1;
+#if HAVE_SME2_EXPERIMENTS
+        // hotspot13
+        recordSme2Calls(13,tuSize,0);
+        if (referenceCopySme2Enabled())
+            (useReferenceCopyUnroll()?referenceCopy_sme2_unroll:referenceCopy_sme2)(dst,adiTemp,refSize);
+        else
+#endif
         memcpy(dst, adiTemp, refSize * sizeof(pixel));
 
         // Fill left border with rec. samples

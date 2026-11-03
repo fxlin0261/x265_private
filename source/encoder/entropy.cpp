@@ -23,6 +23,10 @@
 *****************************************************************************/
 
 #include "common.h"
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/encoder-subpaths-sme2.h"
+#include "aarch64/sme2-profile.h"
+#endif
 #include "framedata.h"
 #include "scalinglist.h"
 #include "quant.h"
@@ -31,6 +35,10 @@
 
 #include "sao.h"
 #include "entropy.h"
+
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/coeff-group-mask-sme2.h"
+#endif
 
 #define CU_DQP_TU_CMAX 5 // max number bins for truncated unary
 #define CU_DQP_EG_k    0 // exp-golomb order
@@ -1187,7 +1195,7 @@ void Entropy::encodeCU(const CUData& ctu, const CUGeom& cuGeom, uint32_t absPart
         return;
     }
 
-    if (cuSplitFlag) 
+    if (cuSplitFlag)
         codeSplitFlag(ctu, absPartIdx, depth);
 
     if (depth < ctu.m_cuDepth[absPartIdx] && depth < ctu.m_encData->m_param->maxCUDepth)
@@ -1979,7 +1987,7 @@ void Entropy::codeMergeIndex(const CUData& cu, uint32_t absPartIdx)
 
     if (numCand > 1)
     {
-        uint32_t unaryIdx = cu.m_mvpIdx[0][absPartIdx]; // merge candidate index was stored in L0 MVP idx 
+        uint32_t unaryIdx = cu.m_mvpIdx[0][absPartIdx]; // merge candidate index was stored in L0 MVP idx
         encodeBin((unaryIdx != 0), m_contextState[OFF_MERGE_IDX_EXT_CTX]);
 
         X265_CHECK(unaryIdx < numCand, "unaryIdx out of range\n");
@@ -2265,6 +2273,14 @@ void Entropy::codeCoeffNxN(const CUData& cu, const coeff_t* coeff, uint32_t absP
 
     const int lastScanSet = scanPosLast >> MLS_CG_SIZE;
 
+#if HAVE_SME2_EXPERIMENTS
+    // hotspot1
+    recordCoeffGroupMaskCalls(lastScanSet);
+    if (lastScanSet && coeffGroupMaskSme2Enabled())
+        sigCoeffGroupFlag64 = (useCoeffGroupMaskU64() ? coeffGroupMask_sme2_u64 : coeffGroupMask_sme2_u32)(codingParameters.scanCG, coeffNum, lastScanSet);
+    else
+        sigCoeffGroupFlag64 = coeffGroupMask_c(codingParameters.scanCG, coeffNum, lastScanSet);
+#else
     // Calculate CG block non-zero mask, the latest CG always flag as non-zero in CG scan loop
     for(int idx = 0; idx < lastScanSet; idx++)
     {
@@ -2272,6 +2288,7 @@ void Entropy::codeCoeffNxN(const CUData& cu, const coeff_t* coeff, uint32_t absP
         const uint8_t nonZero = (coeffNum[idx] != 0);
         sigCoeffGroupFlag64 |= ((nonZero ? (uint64_t)1 : 0) << subSet);
     }
+#endif
 
 
     // Code position of last coefficient
@@ -2334,7 +2351,7 @@ void Entropy::codeCoeffNxN(const CUData& cu, const coeff_t* coeff, uint32_t absP
         const uint32_t subCoeffFlag = coeffFlag[subSet];
         uint32_t scanFlagMask = subCoeffFlag;
         int subPosBase = subSet << MLS_CG_SIZE;
-        
+
         if (subSet == lastScanSet)
         {
             X265_CHECK(scanPosSigOff == scanPosLast - (lastScanSet << MLS_CG_SIZE) - 1, "scanPos mistake\n");
@@ -2861,6 +2878,18 @@ void Entropy::resetBits()
 /** Encode bin */
 void Entropy::encodeBin(uint32_t binValue, uint8_t &ctxModel)
 {
+#if HAVE_SME2_EXPERIMENTS
+    // hotspot19
+    if (!m_bitIf)
+    {
+        recordSme2Calls(19,0,0);
+        if (entropyEstimateSme2Enabled())
+        {
+            m_fracBits += (useEntropyEstimatePacked()?entropyEstimate_sme2_packed:entropyEstimate_sme2)(binValue,ctxModel);
+            return;
+        }
+    }
+#endif
     uint32_t mstate = ctxModel;
 
     ctxModel = sbacNext(mstate, binValue);

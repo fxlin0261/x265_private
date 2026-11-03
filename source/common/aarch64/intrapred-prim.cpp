@@ -7,6 +7,11 @@
 #include "mem-neon.h"
 #include <arm_neon.h>
 
+#if HAVE_SME2_EXPERIMENTS
+#include "sme2-profile.h"
+namespace X265_NS { extern intra_pred_t intraPred4Sme2;
+extern intra_pred_t intraPred8Sme2; }
+#endif
 using namespace X265_NS;
 
 namespace
@@ -63,6 +68,22 @@ void intraFilter_neon(const pixel* samples, pixel* filtered) /* 1:2:1 filtering 
 template<int width>
 void intra_pred_ang_neon(pixel *dst, intptr_t dstStride, const pixel *srcPix0, int dirMode, int bFilter)
 {
+#if HAVE_SME2_EXPERIMENTS
+    if (width == 4 || width == 8) recordSme2Calls(width == 4 ? 6 : 8, dirMode, !!bFilter);
+    // hotspot6
+    if (width == 4 && intraPred4Sme2)
+    {
+        intraPred4Sme2(dst, dstStride, srcPix0, dirMode, bFilter);
+        return;
+    }
+    // hotspot8
+    if (width == 8 && intraPred8Sme2)
+    {
+        intraPred8Sme2(dst, dstStride, srcPix0, dirMode, bFilter);
+        return;
+    }
+#endif
+
     int width2 = width << 1;
     // Flip the neighbours in the horizontal case.
     int horMode = dirMode < 18;

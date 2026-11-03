@@ -23,6 +23,10 @@
  *****************************************************************************/
 
 #include "common.h"
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/encoder-subpaths-sme2.h"
+#include "aarch64/sme2-profile.h"
+#endif
 #include "primitives.h"
 #include "quant.h"
 #include "framedata.h"
@@ -307,6 +311,13 @@ uint32_t Quant::signBitHidingHDQ(int16_t* coeff, int32_t* deltaU, uint32_t numSi
             uint32_t signbit = coeff[scan[cgStartPos + firstNZPosInCG]] > 0 ? 0 : 1;
             uint32_t absSum = 0;
 
+#if HAVE_SME2_EXPERIMENTS
+            // hotspot15
+            recordSme2Calls(15,trSize,lastNZPosInCG-firstNZPosInCG+1);
+            if (coefficientParitySme2Enabled())
+                absSum=(coefficientParityVariant()==3?coefficientParity_sme2_asm:coefficientParityVariant()==2?coefficientParity_sme2_wide:coefficientParity_sme2)(coeff+scan[cgStartPos],trSize);
+            else
+#endif
             for (n = firstNZPosInCG; n <= lastNZPosInCG; n++)
                 absSum += coeff[scan[n + cgStartPos]];
 

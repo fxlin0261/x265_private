@@ -27,6 +27,10 @@
 #include "lowres.h"
 #include "motion.h"
 #include "x265.h"
+#if HAVE_SME2_EXPERIMENTS
+#include "aarch64/motion-search-sme2.h"
+#include "aarch64/sme2-profile.h"
+#endif
 
 #if _MSC_VER
 #pragma warning(disable: 4127) // conditional  expression is constant (macros use this construct)
@@ -789,18 +793,18 @@ void MotionEstimate::refineMV(ReferencePlanes* ref,
     intptr_t stride = ref->lumaStride;
     pixel* fenc = fencPUYuv.m_buf[0];
     pixel* fref = ref->fpelPlane[0] + blockOffset;
-    
+
     setMVP(qmvp);
-    
+
     MV qmvmin = mvmin.toQPel();
     MV qmvmax = mvmax.toQPel();
-   
+
     /* The term cost used here means satd/sad values for that particular search.
      * The costs used in ME integer search only includes the SAD cost of motion
      * residual and sqrtLambda times MVD bits.  The subpel refine steps use SATD
      * cost of residual and sqrtLambda * MVD bits.
     */
-             
+
     // measure SATD cost at clipped QPEL MVP
     MV pmv = qmvp.clipped(qmvmin, qmvmax);
     MV bestpre = pmv;
@@ -862,7 +866,7 @@ void MotionEstimate::refineMV(ReferencePlanes* ref,
         int bdir = 0;
         for (int i = 1; i <= wl.hpel_dirs; i++)
         {
-            MV qmv = bmv + square1[i] * 2;            
+            MV qmv = bmv + square1[i] * 2;
 
             // check mv range for slice bound
             if ((qmv.y < qmvmin.y) | (qmv.y > qmvmax.y))
@@ -873,7 +877,7 @@ void MotionEstimate::refineMV(ReferencePlanes* ref,
         }
 
         if (bdir)
-            bmv += square1[bdir] * 2;            
+            bmv += square1[bdir] * 2;
         else
             break;
     }
@@ -888,7 +892,7 @@ void MotionEstimate::refineMV(ReferencePlanes* ref,
         for (int i = 1; i <= wl.qpel_dirs; i++)
         {
             MV qmv = bmv + square1[i];
-            
+
             // check mv range for slice bound
             if ((qmv.y < qmvmin.y) | (qmv.y > qmvmax.y))
                 continue;
@@ -905,7 +909,7 @@ void MotionEstimate::refineMV(ReferencePlanes* ref,
 
     // check mv range for slice bound
     X265_CHECK(((pmv.y >= qmvmin.y) & (pmv.y <= qmvmax.y)), "mv beyond range!");
-    
+
     x265_emms();
     outQMv = bmv;
 }
@@ -1103,25 +1107,40 @@ me_hex2:
         bcost >>= 3;
 #endif // if 0
 
-        /* square refine */
-        int dir = 0;
-        COST_MV_X4_DIR(0, -1,  0, 1, -1, 0, 1, 0, costs);
-        if ((bmv.y - 1 >= mvmin.y) & (bmv.y - 1 <= mvmax.y))
-            COPY2_IF_LT(bcost, costs[0], dir, 1);
-        if ((bmv.y + 1 >= mvmin.y) & (bmv.y + 1 <= mvmax.y))
-            COPY2_IF_LT(bcost, costs[1], dir, 2);
-        COPY2_IF_LT(bcost, costs[2], dir, 3);
-        COPY2_IF_LT(bcost, costs[3], dir, 4);
-        COST_MV_X4_DIR(-1, -1, -1, 1, 1, -1, 1, 1, costs);
-        if ((bmv.y - 1 >= mvmin.y) & (bmv.y - 1 <= mvmax.y))
-            COPY2_IF_LT(bcost, costs[0], dir, 5);
-        if ((bmv.y + 1 >= mvmin.y) & (bmv.y + 1 <= mvmax.y))
-            COPY2_IF_LT(bcost, costs[1], dir, 6);
-        if ((bmv.y - 1 >= mvmin.y) & (bmv.y - 1 <= mvmax.y))
-            COPY2_IF_LT(bcost, costs[2], dir, 7);
-        if ((bmv.y + 1 >= mvmin.y) & (bmv.y + 1 <= mvmax.y))
-            COPY2_IF_LT(bcost, costs[3], dir, 8);
-        bmv += square1[dir];
+#if HAVE_SME2_EXPERIMENTS
+        // hotspot4
+        recordSme2Calls(4, int(bmv.y-1 >= mvmin.y && bmv.y-1 <= mvmax.y) | (int(bmv.y+1 >= mvmin.y && bmv.y+1 <= mvmax.y) << 1), 0);
+        if (motionSearchSme2Enabled() && bcost >= 0 && bcost <= (INT_MAX >> 4))
+        {
+            COST_MV_X4_DIR(0, -1, 0, 1, -1, 0, 1, 0, costs);
+            COST_MV_X4_DIR(-1, -1, -1, 1, 1, -1, 1, 1, costs + 4);
+            int selected = selectSquareCandidates_sme2(costs, bmv.y, mvmin.y, mvmax.y, bcost);
+            bcost = selected >> 4;
+            bmv += square1[selected & 15];
+        }
+        else
+#endif
+        {
+            /* square refine */
+            int dir = 0;
+            COST_MV_X4_DIR(0, -1,  0, 1, -1, 0, 1, 0, costs);
+            if ((bmv.y - 1 >= mvmin.y) & (bmv.y - 1 <= mvmax.y))
+                COPY2_IF_LT(bcost, costs[0], dir, 1);
+            if ((bmv.y + 1 >= mvmin.y) & (bmv.y + 1 <= mvmax.y))
+                COPY2_IF_LT(bcost, costs[1], dir, 2);
+            COPY2_IF_LT(bcost, costs[2], dir, 3);
+            COPY2_IF_LT(bcost, costs[3], dir, 4);
+            COST_MV_X4_DIR(-1, -1, -1, 1, 1, -1, 1, 1, costs);
+            if ((bmv.y - 1 >= mvmin.y) & (bmv.y - 1 <= mvmax.y))
+                COPY2_IF_LT(bcost, costs[0], dir, 5);
+            if ((bmv.y + 1 >= mvmin.y) & (bmv.y + 1 <= mvmax.y))
+                COPY2_IF_LT(bcost, costs[1], dir, 6);
+            if ((bmv.y - 1 >= mvmin.y) & (bmv.y - 1 <= mvmax.y))
+                COPY2_IF_LT(bcost, costs[2], dir, 7);
+            if ((bmv.y + 1 >= mvmin.y) & (bmv.y + 1 <= mvmax.y))
+                COPY2_IF_LT(bcost, costs[3], dir, 8);
+            bmv += square1[dir];
+        }
         break;
     }
 
@@ -1769,7 +1788,7 @@ int MotionEstimate::subpelCompare(ReferencePlanes *ref, const MV& qmv, pixelcmp_
     X265_CHECK(fencPUYuv.m_size == FENC_STRIDE, "fenc buffer is assumed to have FENC_STRIDE by sad_x3 and sad_x4\n");
 
     ALIGN_VAR_32(pixel, subpelbuf[MAX_CU_SIZE * MAX_CU_SIZE]);
-    
+
     if (!(yFrac | xFrac))
         cost = cmp(fencPUYuv.m_buf[0], fencStride, fref, refStride);
     else
