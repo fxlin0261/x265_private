@@ -166,7 +166,7 @@ if(ENABLE_ASSEMBLY AND (ARM64 OR CROSS_COMPILE_ARM64))
         set_source_files_properties(aarch64/coeff-cost-sme2.cpp PROPERTIES
             COMPILE_FLAGS "-march=armv9.2-a+sme2")
         # hotspot9
-        list(APPEND ASM_PRIMITIVES aarch64/dct32-sme2.cpp aarch64/dct32-sme2-tables.h)
+        list(APPEND ASM_PRIMITIVES aarch64/dct32-sme2.cpp aarch64/dct32-sme2-tables.h aarch64/dct-multi-sme2.h)
         set_source_files_properties(aarch64/dct32-sme2.cpp PROPERTIES
             COMPILE_FLAGS "-march=armv9.2-a+sme2")
         # hotspot10
