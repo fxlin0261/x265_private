@@ -662,6 +662,12 @@ void setupNeonDotProdPrimitives(EncoderPrimitives &)
 #endif // !HIGH_BIT_DEPTH
 #endif // HAVE_NEON_DOTPROD
 
+#if HAVE_SME2
+void setupCoeffCostPrimitives_sme2(EncoderPrimitives &p);
+void setupDct32Primitives_sme2(EncoderPrimitives &p);
+void setupSaoStatsPrimitives_sme2(EncoderPrimitives &p);
+void setupDct16Primitives_sme2(EncoderPrimitives &p);
+#endif
 void setupAssemblyPrimitives(EncoderPrimitives &p, int cpuMask)
 {
     if (cpuMask & X265_CPU_NEON)
@@ -691,6 +697,16 @@ void setupAssemblyPrimitives(EncoderPrimitives &p, int cpuMask)
     {
         setupSve2BitPermPrimitives(p);
     }
+#endif
+#if HAVE_SME2
+    // hotspot2
+    setupCoeffCostPrimitives_sme2(p);
+    // hotspot9
+    setupDct32Primitives_sme2(p);
+    // hotspot10
+    setupSaoStatsPrimitives_sme2(p);
+    // hotspot16
+    setupDct16Primitives_sme2(p);
 #endif
 }
 

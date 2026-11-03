@@ -157,6 +157,28 @@ if(ENABLE_ASSEMBLY AND (ARM64 OR CROSS_COMPILE_ARM64))
         endforeach()
     endif()
 
+    if(ENABLE_SME2 AND NOT HIGH_BIT_DEPTH)
+        list(APPEND ASM_PRIMITIVES aarch64/sme2.cpp aarch64/sme2.h)
+        set_source_files_properties(aarch64/sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot2
+        list(APPEND ASM_PRIMITIVES aarch64/coeff-cost-sme2.cpp)
+        set_source_files_properties(aarch64/coeff-cost-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot9
+        list(APPEND ASM_PRIMITIVES aarch64/dct32-sme2.cpp aarch64/dct32-sme2-tables.h aarch64/dct-multi-sme2.h)
+        set_source_files_properties(aarch64/dct32-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot10
+        list(APPEND ASM_PRIMITIVES aarch64/sao-stats-sme2.cpp)
+        set_source_files_properties(aarch64/sao-stats-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+        # hotspot16
+        list(APPEND ASM_PRIMITIVES aarch64/dct16-sme2.cpp aarch64/dct16-sme2-tables.h)
+        set_source_files_properties(aarch64/dct16-sme2.cpp PROPERTIES
+            COMPILE_FLAGS "-march=armv9.2-a+sme2")
+    endif()
+
     source_group(Assembly FILES ${ASM_PRIMITIVES})
 
     if(AARCH64_WARNINGS_AS_ERRORS)
