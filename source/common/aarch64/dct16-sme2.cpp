@@ -6,6 +6,7 @@
 namespace X265_NS {
 namespace {
 #include "dct16-sme2-tables.h"
+#include "dct-multi-sme2.h"
 
 __attribute__((always_inline)) static inline
 void packRows(const int16_t *src, intptr_t stride, int16_t packed[2][8][16]) __arm_streaming __arm_inout("za")
@@ -262,13 +263,58 @@ void dct16_sme2_packed_compact(const int16_t *src, int16_t *dst, intptr_t stride
     transformPackedCompact<3>(packed, next);
     transformCompact<10>(next, dst);
 }
+// hotspot16
+__arm_new("za") __arm_locally_streaming
+void dct16_sme2_round(const int16_t *src, int16_t *dst, intptr_t stride)
+{
+    int16_t packed[2][8][16], next[2][8][16];
+    packRows(src, stride, packed);
+    transformDctMulti<16, 3, true, false, 1, false>(packed, &next[0][0][0], packedDct16);
+    transform<10>(next, dst);
+}
+
+// hotspot16
+__arm_new("za") __arm_locally_streaming
+void dct16_sme2_multi(const int16_t *src, int16_t *dst, intptr_t stride)
+{
+    int16_t packed[2][8][16], next[2][8][16];
+    packDctRowsMulti<16, 1>(src, stride, packed);
+    transformDctMulti<16, 3, true, true, 1, false>(packed, &next[0][0][0], packedDct16);
+    transformDctMulti<16, 10, false, true, 1, false>(next, dst, packedDct16);
+}
+
+// hotspot16
+__arm_new("za") __arm_locally_streaming
+void dct16_sme2_multi_unrolled(const int16_t *src, int16_t *dst, intptr_t stride)
+{
+    int16_t packed[2][8][16], next[2][8][16];
+    packDctRowsMulti<16, 8>(src, stride, packed);
+    transformDctMulti<16, 3, true, true, 8, false>(packed, &next[0][0][0], packedDct16);
+    transformDctMulti<16, 10, false, true, 8, false>(next, dst, packedDct16);
+}
+
+// hotspot16
+__arm_new("za") __arm_locally_streaming
+void dct16_sme2_multi_rows(const int16_t *src, int16_t *dst, intptr_t stride)
+{
+    int16_t packed[2][8][16], next[2][8][16];
+    packDctRowsMulti<16, 8>(src, stride, packed);
+    transformDctMulti<16, 3, true, true, 8, true>(packed, &next[0][0][0], packedDct16);
+    transformDctMulti<16, 10, false, true, 8, true>(next, dst, packedDct16);
+}
+
 void setupDct16Primitives_sme2(EncoderPrimitives &p)
 {
     const char *s = getenv("X265_SME2_DCT16");
     const char *v = getenv("X265_SME2_DCT16_VARIANT");
     if (s && s[0] == '1' && !s[1] && sme2Available())
-        p.cu[BLOCK_16x16].dct = v && v[0] == '1' ? dct16_sme2 :
+        p.cu[BLOCK_16x16].dct = v && v[0] == '8' ? dct16_sme2_multi_rows :
+                                  v && v[0] == '7' ? dct16_sme2_multi_unrolled :
+                                  v && v[0] == '6' ? dct16_sme2_multi :
+                                  v && v[0] == '5' ? dct16_sme2_round :
+                                  v && v[0] == '1' ? dct16_sme2 :
                                   v && v[0] == '2' ? dct16_sme2_compact :
-                                  v && v[0] == '4' ? dct16_sme2_packed_compact : dct16_sme2_packed;
+                                  v && v[0] == '4' ? dct16_sme2_packed_compact :
+                                  v && v[0] == '3' ? dct16_sme2_packed : dct16_sme2_multi_unrolled;
 }
 }
