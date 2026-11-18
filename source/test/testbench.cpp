@@ -104,6 +104,9 @@ struct test_arch_t
     { "SVE", X265_CPU_SVE },
     { "SVE2", X265_CPU_SVE2 },
     { "SVE2_BitPerm", X265_CPU_SVE2_BITPERM },
+#if defined(HAVE_SME2)
+    { "SME2", X265_CPU_SME2 },
+#endif
     { "FastNeonMRC", X265_CPU_FAST_NEON_MRC },
 #elif X265_ARCH_RISCV64
     { "RVV", X265_CPU_RVV},

@@ -51,6 +51,9 @@ void setupDCTPrimitives_neon(EncoderPrimitives &p);
 #if defined(HAVE_SVE) && HAVE_SVE_BRIDGE
 void setupDCTPrimitives_sve(EncoderPrimitives &p);
 #endif
+#if defined(HAVE_SME2)
+void setupDCTPrimitives_sme2(EncoderPrimitives &p);
+#endif
 };
 
 

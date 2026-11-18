@@ -58,6 +58,10 @@ static inline int aarch64_get_cpu_flags()
     if (have_feature("hw.optional.arm.FEAT_I8MM"))
         flags |= X265_CPU_NEON_I8MM;
 #endif
+#if HAVE_SME2
+    if (have_feature("hw.optional.arm.FEAT_SME2"))
+        flags |= X265_CPU_SME2;
+#endif
 
     return flags;
 }
@@ -124,6 +128,12 @@ static inline int aarch64_get_cpu_flags()
     }
 #endif  // defined(PF_ARM_SVE_BITPERM_INSTRUCTIONS_AVAILABLE)
 #endif  // HAVE_SVE2_BITPERM
+#if HAVE_SME2 && defined(PF_ARM_SME2_INSTRUCTIONS_AVAILABLE)
+    if (IsProcessorFeaturePresent(PF_ARM_SME2_INSTRUCTIONS_AVAILABLE))
+    {
+        flags |= X265_CPU_SME2;
+    }
+#endif
     return flags;
 }
 
@@ -136,6 +146,7 @@ static inline int aarch64_get_cpu_flags()
 #define X265_AARCH64_HWCAP2_SVE2 (1 << 1)
 #define X265_AARCH64_HWCAP2_SVEBITPERM (1 << 4)
 #define X265_AARCH64_HWCAP2_I8MM (1 << 13)
+#define X265_AARCH64_HWCAP2_SME2 (1UL << 37)
 
 static inline int aarch64_get_cpu_flags()
 {
@@ -144,7 +155,7 @@ static inline int aarch64_get_cpu_flags()
 #if HAVE_NEON_DOTPROD || HAVE_SVE
     unsigned long hwcap = getauxval(AT_HWCAP);
 #endif
-#if HAVE_NEON_I8MM || HAVE_SVE2 || HAVE_SVE2_BITPERM
+#if HAVE_NEON_I8MM || HAVE_SVE2 || HAVE_SVE2_BITPERM || HAVE_SME2
     unsigned long hwcap2 = getauxval(AT_HWCAP2);
 #endif
 
@@ -165,6 +176,9 @@ static inline int aarch64_get_cpu_flags()
 #endif
 #if HAVE_SVE2_BITPERM
     if (hwcap2 & X265_AARCH64_HWCAP2_SVEBITPERM) flags |= X265_CPU_SVE2_BITPERM;
+#endif
+#if HAVE_SME2
+    if (hwcap2 & X265_AARCH64_HWCAP2_SME2) flags |= X265_CPU_SME2;
 #endif
 
     return flags;
@@ -220,6 +234,9 @@ static inline int aarch64_cpu_detect()
 #endif
 #if HAVE_SVE2_BITPERM
     flags |= X265_CPU_SVE2_BITPERM;
+#endif
+#if HAVE_SME2
+    flags |= X265_CPU_SME2;
 #endif
     return flags;
 }
