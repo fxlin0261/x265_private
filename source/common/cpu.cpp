@@ -126,6 +126,9 @@ const cpu_name_t cpu_names[] =
 #if defined(HAVE_SVE2_BITPERM)
     { "SVE2_BitPerm",    X265_CPU_SVE2_BITPERM },
 #endif
+#if defined(HAVE_SME2)
+    { "SME2",            X265_CPU_SME2 },
+#endif
 #elif X265_ARCH_POWER8
     { "Altivec",         X265_CPU_ALTIVEC },
 

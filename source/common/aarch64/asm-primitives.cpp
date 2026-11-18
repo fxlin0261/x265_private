@@ -733,6 +733,12 @@ void setupIntrinsicPrimitives(EncoderPrimitives &p, int cpuMask)
         setupSaoPrimitives_sve2(p);
     }
 #endif
+#if defined(HAVE_SME2)
+    if (cpuMask & X265_CPU_SME2)
+    {
+        setupDCTPrimitives_sme2(p);
+    }
+#endif
 }
 
 } // namespace X265_NS

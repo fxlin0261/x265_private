@@ -109,6 +109,7 @@ if(ENABLE_ASSEMBLY AND (ARM64 OR CROSS_COMPILE_ARM64))
     set(C_SRCS_NEON_I8MM filter-neon-i8mm.cpp)
     set(C_SRCS_SVE sao-prim-sve.cpp dct-prim-sve.cpp filter-prim-sve.h filter-prim-sve.cpp pixel-prim-sve.cpp)
     set(C_SRCS_SVE2 sao-prim-sve2.cpp)
+    set(C_SRCS_SME2 dct-prim-sme2.cpp)
     enable_language(ASM)
 
     # Add Arm assembly files here.
@@ -157,10 +158,17 @@ if(ENABLE_ASSEMBLY AND (ARM64 OR CROSS_COMPILE_ARM64))
         endforeach()
     endif()
 
+    if(CPU_HAS_SME2)
+        foreach(SRC ${C_SRCS_SME2})
+            set(ASM_PRIMITIVES ${ASM_PRIMITIVES} aarch64/${SRC})
+            set_source_files_properties(aarch64/${SRC} PROPERTIES COMPILE_FLAGS ${AARCH64_SME2_FLAG})
+        endforeach()
+    endif()
+
     source_group(Assembly FILES ${ASM_PRIMITIVES})
 
     if(AARCH64_WARNINGS_AS_ERRORS)
-        set_source_files_properties(${ASM_PRIMITIVES} PROPERTIES COMPILE_FLAGS -Werror)
+        set_property(SOURCE ${ASM_PRIMITIVES} APPEND_STRING PROPERTY COMPILE_FLAGS " -Werror")
     endif()
 endif(ENABLE_ASSEMBLY AND (ARM64 OR CROSS_COMPILE_ARM64))
 
